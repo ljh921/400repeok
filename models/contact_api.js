@@ -1,6 +1,8 @@
 var async = require('async');
 var dbUtil=require('../util/db');
 var sd=require('silly-datetime');
+var mapList=require('../data/china');
+var feedbackList=require('../data/feedback');
 
 var contactApi={
   dataList: function (req,res,next){
@@ -36,7 +38,7 @@ var contactApi={
         }
       });
     },function (conn,rawTotal,callback) {
-      let sql='SELECT D.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,C.* FROM(SELECT @rownum:=0)r,(SELECT B.ID,A.NUMBER,A.NAME,B.NAME AS STAFF_NAME,B.MOBILE_TELPHONE,B.LANDLINE_TELPHONE,A.TYPE,A.CALLER_AREA FROM COMPANY_INFO A INNER JOIN CONTACT_INFO B ON A.ID=B.COMPANY_ID)C)D WHERE ROWNUM BETWEEN ? AND ?';
+      let sql='SELECT E.*,F.NAME AS TYPENAME FROM(SELECT D.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,C.* FROM(SELECT @rownum:=0)r,(SELECT B.ID,A.NUMBER,A.NAME,B.NAME AS STAFF_NAME,B.MOBILE_TELPHONE,B.LANDLINE_TELPHONE,A.TYPE,A.CALLER_AREA,A.CALLER_PROVINCE FROM COMPANY_INFO A INNER JOIN CONTACT_INFO B ON A.ID=B.COMPANY_ID)C)D WHERE ROWNUM BETWEEN ? AND ?)E INNER JOIN COMPANY_TYPE F ON E.TYPE=F.ID';
       let variables=[startIndex,endIndex];
       conn.query(sql,variables,function(err, result){
         if (err) { 
@@ -52,8 +54,19 @@ var contactApi={
             obj.staffName=result[i].STAFF_NAME;
             obj.mobileTelphone=result[i].MOBILE_TELPHONE;
             obj.landlineTelphone=result[i].LANDLINE_TELPHONE;
-            obj.type=result[i].TYPE;
-            obj.callerArea=result[i].CALLER_AREA;
+            obj.type=result[i].TYPENAME;
+
+            for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+              let mapObj=mapList.chinaMap.provincesList[j];
+              if(mapObj.Id==result[i].CALLER_PROVINCE){
+                obj.callerProvince=mapObj.Name;
+                obj.callerArea=mapObj.Citys[result[i].CALLER_AREA-1].Name;
+                break;
+              }
+              obj.callerProvince=null;
+              obj.callerArea=null;
+            }
+
             rows.push(obj);
           }
           res.send({
@@ -118,7 +131,7 @@ var contactApi={
         }
       });
     },function (conn,rawTotal,callback) {
-      let sql='SELECT D.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,C.* FROM(SELECT @rownum:=0)r,(SELECT B.ID,A.NUMBER,A.NAME,B.NAME AS STAFF_NAME,B.MOBILE_TELPHONE,B.LANDLINE_TELPHONE,A.TYPE,A.CALLER_AREA FROM COMPANY_INFO A INNER JOIN CONTACT_INFO B ON A.ID=B.COMPANY_ID'+whereClause+')C)D WHERE ROWNUM BETWEEN ? AND ?';
+      let sql='SELECT E.*,F.NAME AS TYPENAME FROM(SELECT D.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,C.* FROM(SELECT @rownum:=0)r,(SELECT B.ID,A.NUMBER,A.NAME,B.NAME AS STAFF_NAME,B.MOBILE_TELPHONE,B.LANDLINE_TELPHONE,A.TYPE,A.CALLER_AREA,A.CALLER_PROVINCE FROM COMPANY_INFO A INNER JOIN CONTACT_INFO B ON A.ID=B.COMPANY_ID'+whereClause+')C)D WHERE ROWNUM BETWEEN ? AND ?)E INNER JOIN COMPANY_TYPE F ON E.TYPE=F.ID';
       let variables=[startIndex,endIndex];
       conn.query(sql,variables,function(err, result){
         if (err) { 
@@ -134,8 +147,18 @@ var contactApi={
             obj.staffName=result[i].STAFF_NAME;
             obj.mobileTelphone=result[i].MOBILE_TELPHONE;
             obj.landlineTelphone=result[i].LANDLINE_TELPHONE;
-            obj.type=result[i].TYPE;
-            obj.callerArea=result[i].CALLER_AREA;
+            obj.type=result[i].TYPENAME;
+
+            for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+              let mapObj=mapList.chinaMap.provincesList[j];
+              if(mapObj.Id==result[i].CALLER_PROVINCE){
+                obj.callerProvince=mapObj.Name;
+                obj.callerArea=mapObj.Citys[result[i].CALLER_AREA-1].Name;
+                break;
+              }
+              obj.callerProvince=null;
+              obj.callerArea=null;
+            }
             rows.push(obj);
           }
           res.send({
@@ -155,7 +178,7 @@ var contactApi={
     let ID=req.query.id;
 
     async.waterfall([dbUtil.poolTask,function (conn,callback) {
-      var sql='SELECT A.NAME,A.NUMBER,A.ADDRESS,A.CALLER_AREA,A.TYPE,A.INDUSTRY,A.ESTABLISHER,A.ESTABLISH_TIME,B.NAME AS STAFF_NAME,B.MOBILE_TELPHONE,B.JOB,B.LANDLINE_TELPHONE,B.E_MAIL FROM COMPANY_INFO A INNER JOIN CONTACT_INFO B ON A.ID=B.COMPANY_ID WHERE B.ID=?';
+      var sql='SELECT C.*,D.NAME AS TYPENAME FROM(SELECT A.NAME,A.NUMBER,A.ADDRESS,A.CALLER_AREA,A.CALLER_PROVINCE,A.TYPE,A.ESTABLISHER,A.ESTABLISH_TIME,B.NAME AS STAFF_NAME,B.MOBILE_TELPHONE,B.JOB,B.LANDLINE_TELPHONE,B.E_MAIL FROM COMPANY_INFO A INNER JOIN CONTACT_INFO B ON A.ID=B.COMPANY_ID WHERE B.ID=?)C INNER JOIN COMPANY_TYPE D ON C.TYPE=D.ID';
       conn.query(sql,[ID],function(err, result){
         if (err) { 
           callback(err,conn);
@@ -166,9 +189,19 @@ var contactApi={
             obj.name=result[0].NAME;
             obj.number=result[0].NUMBER;
             obj.address=result[0].ADDRESS;
-            obj.callerArea=result[0].CALLER_AREA;
-            obj.type=result[0].TYPE;
-            obj.industry=result[0].INDUSTRY;
+
+            for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+              let mapObj=mapList.chinaMap.provincesList[j];
+              if(mapObj.Id==result[0].CALLER_PROVINCE){
+                obj.callerProvince=mapObj.Name;
+                obj.callerArea=mapObj.Citys[result[0].CALLER_AREA-1].Name;
+                break;
+              }
+              obj.callerProvince=null;
+              obj.callerArea=null;
+            }
+
+            obj.type=result[0].TYPENAME;
             obj.establisher=result[0].ESTABLISHER;
             obj.establishTime=sd.format(result[0].ESTABLISH_TIME,'YYYY-MM-DD HH:mm:ss');
             obj.staffName=result[0].STAFF_NAME;
@@ -194,9 +227,32 @@ var contactApi={
     let COMPANY_NAME=req.body.company_name;
     let NUMBER=req.body.number;
     let ADDRESS=req.body.address;
-    let CALLER_AREA=Number(req.body.area);
-    let TYPE=Number(req.body.type);
-    let INDUSTRY=Number(req.body.industry);
+    let CALLER_AREA=req.body.area;
+    let CALLER_PROVINCE=req.body.province;
+
+    for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+      let mapObj=mapList.chinaMap.provincesList[j];
+      if(mapObj.Name==CALLER_PROVINCE){
+        CALLER_PROVINCE=Number(mapObj.Id);
+        for(k=0;k<mapObj.Citys.length;k++){
+          if(mapObj.Citys[k].Name==CALLER_AREA){
+            CALLER_AREA=Number(mapObj.Citys[k].Id);
+            break;
+          }
+        }
+        break;
+      }
+    }
+
+    if(isNaN(CALLER_AREA)||isNaN(CALLER_PROVINCE)){
+      res.send({
+        code:400,
+        msg:'province or city is wrong'
+      });
+      return;
+    }
+
+    let TYPE=req.body.type;
     let ESTABLISHER=req.body.establisher;
     let ESTABLISH_TIME=req.body.time;
 
@@ -206,7 +262,7 @@ var contactApi={
     let LANDLINE_TELPHONE=req.body.landline_telphone;
     let E_MAIL=req.body.e_mail;
 
-    if(!COMPANY_NAME||!NUMBER||!ADDRESS||!CALLER_AREA||!TYPE||!INDUSTRY||!ESTABLISHER||!ESTABLISH_TIME||!STAFF_NAME||!MOBILE_TELPHONE||!JOB||!LANDLINE_TELPHONE||!E_MAIL){
+    if(!COMPANY_NAME||!NUMBER||!ADDRESS||!CALLER_AREA||!TYPE||!CALLER_PROVINCE||!ESTABLISHER||!ESTABLISH_TIME||!STAFF_NAME||!MOBILE_TELPHONE||!JOB||!LANDLINE_TELPHONE||!E_MAIL){
       res.send({
         code:400,
         msg:'lack keyword'
@@ -214,7 +270,26 @@ var contactApi={
       return;
     }
 
-    async.waterfall([dbUtil.poolTask,function (conn,callback) {
+    async.waterfall([dbUtil.poolTask,function(conn,callback){
+      let sql='SELECT ID,NAME FROM COMPANY_TYPE';
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          for(let i=0;i<result.length;i++){
+            if(result[i].NAME==TYPE){
+              TYPE=Number(result[i].ID);
+              break;
+            }
+          }
+          if(isNaN(TYPE)){
+            callback(new Error('type is wrong'),conn);
+          }else{
+            callback(null,conn);
+          }
+        }
+      });
+    },function (conn,callback) {
       let sql='SELECT NAME FROM CONTACT_INFO WHERE LANDLINE_TELPHONE=?';
       conn.query(sql,[LANDLINE_TELPHONE],function(err, result){
         if (err) { 
@@ -249,8 +324,8 @@ var contactApi={
         }
       });
     },function (conn,callback) {
-      let variables=[COMPANY_NAME,NUMBER,ADDRESS,CALLER_AREA,TYPE,INDUSTRY,ESTABLISHER,ESTABLISH_TIME];
-      let sql='INSERT INTO COMPANY_INFO(NAME,NUMBER,ADDRESS,CALLER_AREA,TYPE,INDUSTRY,ESTABLISHER,ESTABLISH_TIME) VALUES(?,?,?,?,?,?,?,?)';
+      let variables=[COMPANY_NAME,NUMBER,ADDRESS,CALLER_AREA,TYPE,CALLER_PROVINCE,ESTABLISHER,ESTABLISH_TIME];
+      let sql='INSERT INTO COMPANY_INFO(NAME,NUMBER,ADDRESS,CALLER_AREA,TYPE,CALLER_PROVINCE,ESTABLISHER,ESTABLISH_TIME) VALUES(?,?,?,?,?,?,?,?)';
       conn.query(sql,variables,function(err, result){
         if (err) { 
           callback(err,conn);
@@ -328,7 +403,7 @@ var contactApi={
         if (err) { 
           callback(err,conn);
         }else{
-          if(result==''){
+          if(result==''||!result){
             res.send({
               code:400,
               msg:'staff has not existed'
@@ -365,6 +440,75 @@ var contactApi={
       dbUtil.finalTask(err,conn,next);
     });
   },
+  deleteAllData: function (req,res,next){
+    let ID=req.body.id;
+    if(!ID||!(ID instanceof Array)){
+      res.send({
+        code:400,
+        msg:'id error'
+      });
+      return;
+    }
+
+    let IDgroup='(';
+    for(let i=0;i<ID.length;i++){
+      if(i==ID.length-1){
+        IDgroup+=ID[i]+')';
+      }else{
+        IDgroup+=ID[i]+',';
+      }
+    }
+
+    async.waterfall([dbUtil.poolTask,function (conn,callback) {
+      let sql='SELECT COMPANY_ID FROM CONTACT_INFO WHERE ID IN'+IDgroup;
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          if(result==''||!result){
+            res.send({
+              code:400,
+              msg:'staff has not existed'
+            });
+            callback(new Error('staff has not existed'),conn);
+          }else{
+            let ary='(';
+            for(let i=0;i<result.length;i++){
+              if(i==result.length-1){
+                ary+=result[i].COMPANY_ID+')';
+              }else{
+                ary+=result[i].COMPANY_ID+',';
+              }
+            }
+            callback(null,conn,ary);
+          }
+        }
+      });
+    },function (conn,ary,callback) {
+      let sql='DELETE FROM COMPANY_INFO WHERE ID IN'+ary;
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          if(result&&result.affectedRows>=1){
+            res.send({
+              code:200,
+              msg:'delete success'
+            });
+            callback(null,conn);
+          }else{
+            res.send({
+              code:400,
+              msg:'delete failed'
+            });
+            callback(new Error('delete failed'),conn);
+          }
+        }
+      });
+    }],function(err,conn){
+      dbUtil.finalTask(err,conn,next);
+    });
+  },
   patchData: function (req,res,next){
     let ID=req.body.id;
     if(!ID){
@@ -378,9 +522,32 @@ var contactApi={
     let COMPANY_NAME=req.body.company_name;
     let NUMBER=req.body.number;
     let ADDRESS=req.body.address;
-    let CALLER_AREA=Number(req.body.area);
-    let TYPE=Number(req.body.type);
-    let INDUSTRY=Number(req.body.industry);
+    let CALLER_AREA=req.body.area;
+    let CALLER_PROVINCE=req.body.province;
+
+    for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+      let mapObj=mapList.chinaMap.provincesList[j];
+      if(mapObj.Name==CALLER_PROVINCE){
+        CALLER_PROVINCE=Number(mapObj.Id);
+        for(k=0;k<mapObj.Citys.length;k++){
+          if(mapObj.Citys[k].Name==CALLER_AREA){
+            CALLER_AREA=Number(mapObj.Citys[k].Id);
+            break;
+          }
+        }
+        break;
+      }
+    }
+
+    if(isNaN(CALLER_AREA)||isNaN(CALLER_PROVINCE)){
+      res.send({
+        code:400,
+        msg:'province or city is wrong'
+      });
+      return;
+    }
+
+    let TYPE=req.body.type;
     let ESTABLISHER=req.body.establisher;
     let ESTABLISH_TIME=req.body.time;
 
@@ -390,7 +557,7 @@ var contactApi={
     let LANDLINE_TELPHONE=req.body.landline_telphone;
     let E_MAIL=req.body.e_mail;
 
-    if(!COMPANY_NAME||!NUMBER||!ADDRESS||!CALLER_AREA||!TYPE||!INDUSTRY||!ESTABLISHER||!ESTABLISH_TIME||!STAFF_NAME||!MOBILE_TELPHONE||!JOB||!LANDLINE_TELPHONE||!E_MAIL){
+    if(!COMPANY_NAME||!NUMBER||!ADDRESS||!CALLER_AREA||!TYPE||!CALLER_PROVINCE||!ESTABLISHER||!ESTABLISH_TIME||!STAFF_NAME||!MOBILE_TELPHONE||!JOB||!LANDLINE_TELPHONE||!E_MAIL){
       res.send({
         code:400,
         msg:'lack keyword'
@@ -398,13 +565,32 @@ var contactApi={
       return;
     }
 
-    async.waterfall([dbUtil.poolTask,function (conn,callback) {
+    async.waterfall([dbUtil.poolTask,function(conn,callback){
+      let sql='SELECT ID,NAME FROM COMPANY_TYPE';
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          for(let i=0;i<result.length;i++){
+            if(result[i].NAME==TYPE){
+              TYPE=Number(result[i].ID);
+              break;
+            }
+          }
+          if(isNaN(TYPE)){
+            callback(new Error('type is wrong'),conn);
+          }else{
+            callback(null,conn);
+          }
+        }
+      });
+    },function (conn,callback) {
       let sql='SELECT COMPANY_ID FROM CONTACT_INFO WHERE ID=?';
       conn.query(sql,[ID],function(err, result){
         if (err) { 
           callback(err,conn);
         }else{
-          if(result==''){
+          if(result==''||!result){
             res.send({
               code:400,
               msg:'staff has not existed'
@@ -451,8 +637,8 @@ var contactApi={
         }
       });
     },function (conn,company_id,callback) {
-      let sql='UPDATE COMPANY_INFO SET NAME=?,NUMBER=?,ADDRESS=?,CALLER_AREA=?,TYPE=?,INDUSTRY=?,ESTABLISHER=?,ESTABLISH_TIME=? WHERE ID=?';
-      let variables=[COMPANY_NAME,NUMBER,ADDRESS,CALLER_AREA,TYPE,INDUSTRY,ESTABLISHER,ESTABLISH_TIME,company_id];
+      let sql='UPDATE COMPANY_INFO SET NAME=?,NUMBER=?,ADDRESS=?,CALLER_AREA=?,TYPE=?,CALLER_PROVINCE=?,ESTABLISHER=?,ESTABLISH_TIME=? WHERE ID=?';
+      let variables=[COMPANY_NAME,NUMBER,ADDRESS,CALLER_AREA,TYPE,CALLER_PROVINCE,ESTABLISHER,ESTABLISH_TIME,company_id];
       conn.query(sql,variables,function(err, result){
         if (err) { 
           callback(err,conn);
@@ -528,7 +714,7 @@ var contactApi={
         }
       });
     },function (conn,rawTotal,callback) {
-      let sql='SELECT B.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,A.* FROM(SELECT @rownum:=0)r,(SELECT ID,CREATE_TIME,P_PROBLEM,C_PROBLEM,URGENCY,DETAIL,SOLVE_SITUATION FROM FEEDBACK_INFO WHERE CONTACT_ID=? ORDER BY CREATE_TIME DESC)A)B WHERE ROWNUM BETWEEN ? AND ?';
+      let sql='SELECT D.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,C.* FROM(SELECT @rownum:=0)r,(SELECT A.ID,A.CREATE_TIME,A.SERVICE_STAGE,A.PROBLEM_ID,B.NAME AS PROBLEM_NAME,A.URGENCY,A.DETAIL,A.SOLVE_SITUATION FROM FEEDBACK_INFO A INNER JOIN PROBLEM_TYPE B ON A.PROBLEM_ID=B.ID WHERE A.CONTACT_ID=? ORDER BY A.CREATE_TIME DESC)C)D WHERE ROWNUM BETWEEN ? AND ?';
       conn.query(sql,[ID,startIndex,endIndex],function(err, result){
         if (err) { 
           callback(err,conn);
@@ -540,9 +726,9 @@ var contactApi={
               obj.rownum=result[i].ROWNUM;
               obj.id=result[i].ID;
               obj.createTime=sd.format(result[i].CREATE_TIME,'YYYY-MM-DD HH:mm:ss');
-              obj.p_problem=result[i].P_PROBLEM;
-              obj.c_problem=result[i].C_PROBLEM;
-              obj.urgency=result[i].URGENCY;
+              obj.stage=feedbackList.serviceStage[result[i].SERVICE_STAGE];
+              obj.problem=result[i].PROBLEM_NAME;
+              obj.urgency=feedbackList.urgency[result[i].URGENCY];
               obj.detail=result[i].DETAIL;
               obj.solveSituation=result[i].SOLVE_SITUATION;
               rows.push(obj);
@@ -585,13 +771,13 @@ var contactApi={
     let startIndex=(pageIndex-1)*pageSize+1;
     let endIndex=pageIndex*pageSize;
 
-    let whereClause=' where CONTACT_ID=?';
+    let whereClause=' where A.CONTACT_ID=?';
     if(keyword){
-       whereClause+=' and (P_PROBLEM LIKE \'%'+keyword+'%\' OR C_PROBLEM LIKE \'%'+keyword+'%\' OR DETAIL LIKE \'%'+keyword+'%\')';
+       whereClause+=' and (B.NAME LIKE \'%'+keyword+'%\' OR A.DETAIL LIKE \'%'+keyword+'%\')';
     }
 
     async.waterfall([dbUtil.poolTask,function (conn,callback) {
-      let sql='SELECT COUNT(*) AS COUNT FROM FEEDBACK_INFO'+whereClause+' ORDER BY CREATE_TIME DESC';
+      let sql='SELECT COUNT(*) AS COUNT FROM FEEDBACK_INFO A INNER JOIN PROBLEM_TYPE B ON A.PROBLEM_ID=B.ID'+whereClause+' ORDER BY A.CREATE_TIME DESC';
       conn.query(sql,[ID],function(err, result){
         if (err) { 
           callback(err,conn);
@@ -601,7 +787,7 @@ var contactApi={
         }
       });
     },function (conn,rawTotal,callback) {
-      let sql='SELECT B.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,A.* FROM(SELECT @rownum:=0)r,(SELECT ID,CREATE_TIME,P_PROBLEM,C_PROBLEM,URGENCY,DETAIL,SOLVE_SITUATION FROM FEEDBACK_INFO'+whereClause+' ORDER BY CREATE_TIME DESC)A)B WHERE ROWNUM BETWEEN ? AND ?';
+      let sql='SELECT D.* FROM(SELECT @rownum := @rownum+1 AS ROWNUM,C.* FROM(SELECT @rownum:=0)r,(SELECT A.ID,A.CREATE_TIME,A.SERVICE_STAGE,A.PROBLEM_ID,B.NAME AS PROBLEM_NAME,A.URGENCY,A.DETAIL,A.SOLVE_SITUATION FROM FEEDBACK_INFO A INNER JOIN PROBLEM_TYPE B ON A.PROBLEM_ID=B.ID'+whereClause+' ORDER BY A.CREATE_TIME DESC)C)D WHERE ROWNUM BETWEEN ? AND ?';
       conn.query(sql,[ID,startIndex,endIndex],function(err, result){
         if (err) { 
           callback(err,conn);
@@ -613,9 +799,9 @@ var contactApi={
               obj.rownum=result[i].ROWNUM;
               obj.id=result[i].ID;
               obj.createTime=sd.format(result[i].CREATE_TIME,'YYYY-MM-DD HH:mm:ss');
-              obj.p_problem=result[i].P_PROBLEM;
-              obj.c_problem=result[i].C_PROBLEM;
-              obj.urgency=result[i].URGENCY;
+              obj.stage=feedbackList.serviceStage[result[i].SERVICE_STAGE];
+              obj.problem=result[i].PROBLEM_NAME;
+              obj.urgency=feedbackList.urgency[result[i].URGENCY];
               obj.detail=result[i].DETAIL;
               obj.solveSituation=result[i].SOLVE_SITUATION;
               rows.push(obj);
@@ -636,12 +822,12 @@ var contactApi={
   },
   addFeedback: function (req,res,next){
     let ID=req.body.id;
-    let P_PROBLEM=req.body.p_problem;
-    let C_PROBLEM=req.body.c_problem;
-    let URGENCY=Number(req.body.urgency);
+    let STAGE=req.body.stage;
+    let PROBLEM=req.body.problem;
+    let URGENCY=req.body.urgency;
     let DETAIL=req.body.detail;
     
-    if(!ID||!P_PROBLEM||isNaN(P_PROBLEM)||!C_PROBLEM||isNaN(C_PROBLEM)||!URGENCY||!DETAIL){
+    if(!ID||!STAGE||!PROBLEM||!URGENCY||!DETAIL){
       res.send({
         code:400,
         msg:'lack condition'
@@ -649,9 +835,50 @@ var contactApi={
       return;
     }
 
-    async.waterfall([dbUtil.poolTask,function (conn,callback) {
-      let sql='INSERT INTO FEEDBACK_INFO(CONTACT_ID,P_PROBLEM,C_PROBLEM,URGENCY,DETAIL) VALUES(?,?,?,?,?)';
-      conn.query(sql,[ID,P_PROBLEM,C_PROBLEM,URGENCY,DETAIL],function(err, result){
+    for(let key in feedbackList.serviceStage){
+      let stageList=feedbackList.serviceStage;
+      if(stageList[key]==STAGE){
+        STAGE=Number(key);
+        break;
+      }
+    }
+
+    for(let key in feedbackList.urgency){
+      let urgencyList=feedbackList.urgency;
+      if(urgencyList[key]==URGENCY){
+        URGENCY=Number(key);
+        break;
+      }
+    }
+
+    if(isNaN(STAGE)||isNaN(URGENCY)){
+      res.send({
+        code:400,
+        msg:'stage or urgency is wrong'
+      });
+    }
+
+    async.waterfall([dbUtil.poolTask,function(conn,callback){
+      let sql='SELECT ID,NAME FROM PROBLEM_TYPE';
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          for(let i=0;i<result.length;i++){
+            if(result[i].NAME==PROBLEM){
+              PROBLEM=result[i].ID;
+            }
+          }
+          if(isNaN(PROBLEM)){
+            callback(new Error('problem is wrong'),conn);
+          }else{
+            callback(null,conn);
+          }
+        }
+      });
+    },function (conn,callback) {
+      let sql='INSERT INTO FEEDBACK_INFO(CONTACT_ID,SERVICE_STAGE,PROBLEM_ID,URGENCY,DETAIL) VALUES(?,?,?,?,?)';
+      conn.query(sql,[ID,STAGE,PROBLEM,URGENCY,DETAIL],function(err, result){
         if (err) { 
           callback(err,conn);
         }else{
@@ -690,9 +917,10 @@ var contactApi={
     
     if(!ID){
       res.send({
-      code:400,
-      msg:'lack id'
+        code:400,
+        msg:'lack id'
       });
+      return;
     }
 
     async.waterfall([dbUtil.poolTask,function (conn,callback) {
@@ -722,21 +950,62 @@ var contactApi={
   },
   patchFeedback: function (req,res,next){
     let ID=req.body.id;
-    let P_PROBLEM=req.body.p_problem;
-    let C_PROBLEM=req.body.c_problem;
-    let URGENCY=Number(req.body.urgency);
+    let STAGE=req.body.stage;
+    let PROBLEM=req.body.problem;
+    let URGENCY=req.body.urgency;
     let DETAIL=req.body.detail;
     
     if(!ID){
       res.send({
-      code:400,
-      msg:'lack id'
+        code:400,
+        msg:'lack id'
       });
     }
 
-    async.waterfall([dbUtil.poolTask,function (conn,callback) {
-      let sql='UPDATE FEEDBACK_INFO SET P_PROBLEM=?,C_PROBLEM=?,URGENCY=?,DETAIL=? WHERE ID=?';
-      conn.query(sql,[P_PROBLEM,C_PROBLEM,URGENCY,DETAIL,ID],function(err, result){
+    for(let key in feedbackList.serviceStage){
+      let stageList=feedbackList.serviceStage;
+      if(stageList[key]==STAGE){
+        STAGE=Number(key);
+        break;
+      }
+    }
+
+    for(let key in feedbackList.urgency){
+      let urgencyList=feedbackList.urgency;
+      if(urgencyList[key]==URGENCY){
+        URGENCY=Number(key);
+        break;
+      }
+    }
+
+    if(isNaN(STAGE)||isNaN(URGENCY)){
+      res.send({
+        code:400,
+        msg:'stage or urgency is wrong'
+      });
+    }
+
+    async.waterfall([dbUtil.poolTask,function(conn,callback){
+      let sql='SELECT ID,NAME FROM PROBLEM_TYPE';
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          for(let i=0;i<result.length;i++){
+            if(result[i].NAME==PROBLEM){
+              PROBLEM=result[i].ID;
+            }
+          }
+          if(isNaN(PROBLEM)){
+            callback(new Error('problem is wrong'),conn);
+          }else{
+            callback(null,conn);
+          }
+        }
+      });
+    },function (conn,callback) {
+      let sql='UPDATE FEEDBACK_INFO SET SERVICE_STAGE=?,PROBLEM_ID=?,URGENCY=?,DETAIL=? WHERE ID=?';
+      conn.query(sql,[STAGE,PROBLEM,URGENCY,DETAIL,ID],function(err, result){
         if (err) { 
           callback(err,conn);
         }else{
@@ -982,9 +1251,9 @@ var contactApi={
             }
             for(let i=0;i<rows.length;i++){
               for(let j=0;j<log.length;j++){
-              if(rows[i].id==log[j].contractId){
-                rows[i].maintenanceLog.push(log[j]);
-              }
+                if(rows[i].id==log[j].contractId){
+                  rows[i].maintenanceLog.push(log[j]);
+                }
               }
             }
           }
@@ -999,6 +1268,79 @@ var contactApi={
       });
     }],function(err,conn){
       dbUtil.finalTask(err,conn,next);
+    });
+  },
+  citys: function (req,res,next){
+    let rows=mapList.chinaMap.provincesList;
+    res.send({
+      code:200,
+      total:rows.length,
+      rows:rows
+    });
+  },
+  problems: function (req,res,next){
+
+    async.waterfall([dbUtil.poolTask,function (conn,callback) {
+      let sql='select id,name from PROBLEM_TYPE';
+      conn.query(sql,[],function(err, result){
+        if(err){
+          callback(err,conn);
+        }else{
+          res.send({
+            code:200,
+            total:result.length,
+            rows:result
+          });
+          callback(null,conn);
+        }
+      });
+    }],function(err,conn){
+      dbUtil.finalTask(err,conn,next);
+    });
+  },
+  companies: function (req,res,next){
+
+    async.waterfall([dbUtil.poolTask,function (conn,callback) {
+      let sql='select id,name from COMPANY_TYPE';
+      conn.query(sql,[],function(err, result){
+        if(err){
+          callback(err,conn);
+        }else{
+          res.send({
+            code:200,
+            total:result.length,
+            rows:result
+          });
+          callback(null,conn);
+        }
+      });
+    }],function(err,conn){
+      dbUtil.finalTask(err,conn,next);
+    });
+  },
+  otherDatas: function (req,res,next){
+    let serviceStage=feedbackList.serviceStage;
+    let serviceStageAry=[];
+    for(let key in serviceStage){
+      let obj={};
+      obj.id=key;
+      obj.name=serviceStage[key];
+      serviceStageAry.push(obj);
+    }
+    let urgency=feedbackList.urgency;
+    let urgencyAry=[];
+    for(let key in urgency){
+      let obj={};
+      obj.id=key;
+      obj.name=urgency[key];
+      urgencyAry.push(obj);
+    }
+    let rows={};
+    rows.serviceStage=serviceStageAry;
+    rows.urgency=urgencyAry;
+    res.send({
+      code:200,
+      rows:rows
     });
   }
 };

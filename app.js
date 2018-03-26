@@ -8,6 +8,8 @@ var dbUtil=require('./util/db');
 // load routers
 var contactRouter = require('./routers/contact_router');
 var callRouter = require('./routers/call_router');
+var knowledgeRouter = require('./routers/knowledge_router');
+var settingRouter = require('./routers/setting_router');
 
 var app = express();
 
@@ -35,6 +37,8 @@ if (app.get('env') == 'development') {
 
 app.use('/400bf/contact', contactRouter);
 app.use('/400bf/call', callRouter);
+app.use('/400bf/knowledge', knowledgeRouter);
+app.use('/400bf/setting', settingRouter);
 
 // 404
 app.use(function (req, res) {

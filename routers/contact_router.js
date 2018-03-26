@@ -24,9 +24,14 @@ router.post('/addData', function (req, res, next) {
   api.addData(req, res, next);
 });
 
-//删除客户
+//删除客户(单条)
 router.delete('/deleteData', function (req, res, next) {
   api.deleteData(req, res, next);
+});
+
+//删除客户(多条)
+router.delete('/deleteAllData', function (req, res, next) {
+  api.deleteAllData(req, res, next);
 });
 
 //修改客户
@@ -67,6 +72,26 @@ router.post('/contractList', function (req, res, next) {
 //合同信息查询
 router.post('/contractSearch', function (req, res, next) {
   api.contractSearch(req, res, next);
+});
+
+//全省份及地级市
+router.get('/citys', function (req, res, next) {
+  api.citys(req, res, next);
+});
+
+//全问题类型
+router.get('/problems', function (req, res, next) {
+  api.problems(req, res, next);
+});
+
+//全客户类型
+router.get('/companies', function (req, res, next) {
+  api.companies(req, res, next);
+});
+
+//其他客服类数据
+router.get('/otherDatas', function (req, res, next) {
+  api.otherDatas(req, res, next);
 });
 
 module.exports = router;
