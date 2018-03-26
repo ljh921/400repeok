@@ -1713,7 +1713,7 @@ var konwledgeApi={
   },
   kfileDownload: function (req,res,next){
     //获取附件文件ID
-    let fileId=Number(req.body.fileId);
+    let fileId=Number(req.query.fileId);
 
     if(!fileId||isNaN(fileId)){
       res.send({
@@ -1877,7 +1877,7 @@ var konwledgeApi={
           return;
         }
 
-        if(!document_name||!document_title||!document_content||!document_describe){
+        if(!document_id||!document_name||!document_title||!document_content||!document_describe){
           res.send({
             code:400,
             msg:'bad fileabout'

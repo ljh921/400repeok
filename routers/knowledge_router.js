@@ -95,7 +95,7 @@ router.post('/kaddFile', function (req, res, next) {
 });
 
 //知识库二模块文档附件下载
-router.post('/kfileDownload', function (req, res, next) {
+router.get('/kfileDownload', function (req, res, next) {
   api.kfileDownload(req, res, next);
 });
 
