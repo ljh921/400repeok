@@ -856,6 +856,7 @@ var contactApi={
         code:400,
         msg:'stage or urgency is wrong'
       });
+      return;
     }
 
     async.waterfall([dbUtil.poolTask,function(conn,callback){

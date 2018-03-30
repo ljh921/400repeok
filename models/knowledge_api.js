@@ -1534,7 +1534,15 @@ var konwledgeApi={
             if (err) { 
               callback(err,conn);
             }else{
-              callback(null,conn);
+              if(result&&result.affectedRows===1){
+                callback(null,conn);
+              }else{
+                res.send({
+                  code:400,
+                  msg:'insert into knowledge_info failed'
+                });
+                callback(new Error('insert into knowledge_info failed'),conn);
+              }
             }
           });
         },function(conn,callback){
@@ -1666,7 +1674,15 @@ var konwledgeApi={
                       if (err) { 
                         callback(err,conn);
                       }else{
-                        callback(null,conn);
+                        if(result&&result.affectedRows===1){
+                          callback(null,conn);
+                        }else{
+                          res.send({
+                            code:400,
+                            msg:'insert into attachment_info failed'
+                          });
+                          callback(new Error('insert into attachment_info failed'),conn);
+                        }
                       }
                     });
                   },function(conn,callback){
@@ -1892,7 +1908,15 @@ var konwledgeApi={
             if (err) { 
               callback(err,conn);
             }else{
-              callback(null,conn);
+              if(result&&result.affectedRows===1){
+                callback(null,conn);
+              }else{
+                res.send({
+                  code:400,
+                  msg:'update knowledge_info failed'
+                });
+                callback(new Error('update knowledge_info failed'),conn);
+              }
             }
           });
         },function(conn,callback){
@@ -1952,7 +1976,15 @@ var konwledgeApi={
             if(err){
               callback(err,conn);
             }else{
-              callback(null,conn,labelId);
+              if(result&&result.affectedRows>=1){
+                callback(null,conn,labelId);
+              }else{
+                res.send({
+                  code:400,
+                  msg:'delete from knowledge_label failed'
+                });
+                callback(new Error('delete from knowledge_label failed'),conn);
+              }
             }
           });
         },function(conn,labelId,callback){
@@ -2023,7 +2055,15 @@ var konwledgeApi={
                       if (err) { 
                         callback(err,conn);
                       }else{
-                        callback(null,conn);
+                        if(result&&result.affectedRows===1){
+                          callback(null,conn);
+                        }else{
+                          res.send({
+                            code:400,
+                            msg:'insert into attachment_info failed'
+                          });
+                          callback(new Error('insert into attachment_info failed'),conn);
+                        }
                       }
                     });
                   },function(conn,callback){
