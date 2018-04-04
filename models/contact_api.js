@@ -63,8 +63,8 @@ var contactApi={
                 obj.callerArea=mapObj.Citys[result[i].CALLER_AREA-1].Name;
                 break;
               }
-              obj.callerProvince=null;
-              obj.callerArea=null;
+              // obj.callerProvince=null;
+              // obj.callerArea=null;
             }
 
             rows.push(obj);

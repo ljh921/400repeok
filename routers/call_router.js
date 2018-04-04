@@ -44,4 +44,14 @@ router.post('/searchNotCalledLog', function (req, res, next) {
   api.searchNotCalledLog(req, res, next);
 });
 
+//导入excel文件(限xlsx后缀)
+router.post('/importExcel', function (req, res, next) {
+  api.importExcel(req, res, next);
+});
+
+//导出excel文件(限xlsx后缀)
+router.get('/exportExcel', function (req, res, next) {
+  api.exportExcel(req, res, next);
+});
+
 module.exports = router;

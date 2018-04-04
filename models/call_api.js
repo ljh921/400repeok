@@ -3,6 +3,10 @@ var dbUtil=require('../util/db');
 var sd=require('silly-datetime');
 var mapList=require('../data/china');
 var feedbackList=require('../data/feedback');
+var xlsx=require('node-xlsx');
+var fs=require('fs');
+var filepath=require('path');
+var formidable=require('formidable');
 
 var callApi={
   callDetail: function (req,res,next){
@@ -1038,6 +1042,289 @@ var callApi={
             });
             callback(null,conn);
           }
+        }
+      });
+    }],function(err,conn){
+      dbUtil.finalTask(err,conn,next);
+    });
+  },
+  importExcel:function(req,res,next){
+    //文件上传，表单方式
+    let form=new formidable.IncomingForm();
+    form.encoding='utf-8';
+    form.uploadDir=filepath.resolve(__dirname,'..')+'/excel/';
+    form.keepExtensions=true;
+    form.maxFieldsSize=1024*1024*1024;
+
+    form.parse(req,function(err,fields,files){
+      if(err){
+        console.log(err);
+        res.send({
+          code:400,
+          msg:'上传失败！'
+        });
+      }else{
+        if(JSON.stringify(files)=='{}'){
+          res.send({
+            code:400,
+            msg:'请选择需要上传的文件，文件自身参数名必填！'
+          });
+        }else{
+          let target;
+          for(a in files){
+            target=a;
+          }
+
+          let nowTime=new Date();
+          nowTime.setHours(nowTime.getHours()+8);
+          let nameAry=files[target].name.split('.');
+          let nameTime=sd.format(nowTime,'YYYYMMDDHHmmss');
+          let newFileName='';
+          for(let i=0;i<nameAry.length-1;i++){
+            if(i==nameAry.length-2){
+              newFileName+=nameAry[i]+'-'+nameTime+'.';
+            }else{
+              newFileName+=nameAry[i];
+            }
+          }
+          newFileName+=nameAry[nameAry.length-1];
+
+          let oldpath=files[target].path;
+          let newpath=form.uploadDir+newFileName;
+
+          fs.rename(oldpath,newpath,function(err){
+            if(err){
+              console.log(err);
+              res.send({
+                code:400,
+                msg:'上传失败！'
+              });
+              return;
+            }
+
+            let excelPath=filepath.resolve(__dirname,'..')+'/excel/';
+            let obj=xlsx.parse(excelPath+'/'+newFileName);
+            // res.send(obj);return;
+            let excelObj=obj[0].data;
+            excelObj.shift();
+            let establishTime=new Date();
+            establishTime.setHours(establishTime.getHours()+8);
+            establishTime=sd.format(establishTime,'YYYY-MM-DD HH:mm:ss');
+            let successCount=0;
+            let failCount=0;
+            let flag=0;
+            // res.send(excelObj);return;
+
+            let taskAry=[dbUtil.poolTask];
+            for(let i=0;i<excelObj.length;i++){
+              let variables1=excelObj[i].slice(0,6);
+              let variables2=excelObj[i].slice(6);
+
+              for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+                let mapObj=mapList.chinaMap.provincesList[j];
+                if(mapObj.Name==variables1[2]){
+                  variables1[2]=Number(mapObj.Id);
+                  for(k=0;k<mapObj.Citys.length;k++){
+                    if(mapObj.Citys[k].Name==variables1[3]){
+                      variables1[3]=Number(mapObj.Citys[k].Id);
+                      break;
+                    }
+                  }
+                  break;
+                }
+              }
+
+              let insertFunction0=function(conn,callback){
+                let sql='SELECT ID,NAME FROM COMPANY_TYPE';
+                conn.query(sql,[],function(err, result){
+                  if (err) { 
+                    callback(err,conn);
+                  }else{
+                    for(let i=0;i<result.length;i++){
+                      if(result[i].NAME==variables1[4]){
+                        variables1[4]=Number(result[i].ID);
+                        break;
+                      }
+                    }
+                    callback(null,conn);
+                  }
+                });
+              }
+
+              let insertFunction1=function(conn,callback){
+                flag=0;
+                let sql='start transaction';
+                conn.query(sql,[],function(err,result){
+                  if(err){
+                    callback(err,conn);
+                  }else{
+                    callback(null,conn);
+                  }
+                });
+              }
+
+              let insertFunction2=function(conn,callback){
+                let sql='insert into COMPANY_INFO(NAME,ADDRESS,CALLER_PROVINCE,CALLER_AREA,TYPE,NUMBER,ESTABLISH_TIME) values(?,?,?,?,?,?,?)';
+                let variables=variables1;
+                variables.push(establishTime);
+                conn.query(sql,variables,function(err,result){
+                  if(err){
+                    callback(null,conn);
+                  }else{
+                    if(result&&result.affectedRows===1){
+                      flag++;
+                      callback(null,conn);
+                    }else{
+                      callback(null,conn);
+                    }
+                  }
+                });
+              };
+
+              let insertFunction3=function(conn,callback){
+                let sql='SELECT LAST_INSERT_ID() AS LASTID';
+                conn.query(sql,[],function(err,result){
+                  if(err){
+                    callback(err,conn);
+                  }else{
+                    let newFileId=result[0].LASTID;
+                    callback(null,conn,newFileId);
+                  }
+                });
+              }
+
+              let insertFunction4=function(conn,newFileId,callback){
+                let sql='insert into CONTACT_INFO(NAME,JOB,DEPARTMENT,MOBILE_TELPHONE,LANDLINE_TELPHONE,E_MAIL,COMPANY_ID) values(?,?,?,?,?,?,?)';
+                variables2.push(newFileId);
+                let variables=variables2;
+                conn.query(sql,variables,function(err,result){
+                  if(err){
+                    callback(null,conn);
+                  }else{
+                    if(result&&result.affectedRows===1){
+                      flag++;
+                      callback(null,conn);
+                    }else{
+                      callback(null,conn);
+                    }
+                  }
+                });
+              }
+
+              let insertFunction5=function(conn,callback){
+                let sql;
+                if(flag==2){
+                  successCount++;
+                  sql='commit';
+                }else{
+                  failCount++;
+                  sql='rollback';
+                }
+                conn.query(sql,[],function(err,result){
+                  if(err){
+                    callback(err,conn);
+                  }else{
+                    callback(null,conn);
+                  }
+                });
+              }
+
+              let lastCallback=function(conn,callback){
+                res.send({
+                  code:200,
+                  success:successCount,
+                  fail:failCount,
+                  msg:'通讯录导入完成！'
+                });
+                callback(null,conn);
+              }
+
+              taskAry.push(insertFunction0);
+              taskAry.push(insertFunction1);
+              taskAry.push(insertFunction2);
+              taskAry.push(insertFunction3);
+              taskAry.push(insertFunction4);
+              taskAry.push(insertFunction5);
+              if(i==excelObj.length-1){
+                taskAry.push(lastCallback);
+              }
+            }
+
+            async.waterfall(taskAry,function(err,conn){
+              dbUtil.finalTask(err,conn,next);
+            });
+          });
+        }
+      }
+    });
+  },
+  exportExcel:function(req,res,next){
+
+    async.waterfall([dbUtil.poolTask,function(conn,callback){
+      let sql='SELECT ID,NAME FROM COMPANY_TYPE';
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          let typeList=result;
+          callback(null,conn,typeList);
+        }
+      });
+    },function (conn,typeList,callback) {
+      let sql='select A.NAME,A.ADDRESS,A.CALLER_PROVINCE,A.CALLER_AREA,A.TYPE,A.NUMBER,B.NAME as staffName,B.JOB,B.DEPARTMENT,B.MOBILE_TELPHONE,B.LANDLINE_TELPHONE,B.E_MAIL from COMPANY_INFO A inner join CONTACT_INFO B on A.ID=B.COMPANY_ID';
+      conn.query(sql,[],function(err, result){
+        if (err) { 
+          callback(err,conn);
+        }else{
+          for(let i=0;i<result.length;i++){
+            for(let j=0;j<mapList.chinaMap.provincesList.length;j++){
+              let mapObj=mapList.chinaMap.provincesList[j];
+              if(mapObj.Id==result[i].CALLER_PROVINCE){
+                result[i].CALLER_PROVINCE=mapObj.Name;
+                result[i].CALLER_AREA=mapObj.Citys[result[i].CALLER_AREA-1].Name;
+                break;
+              }
+              // result[i].CALLER_PROVINCE=null;
+              // result[i].CALLER_AREA=null;
+            }
+            for(let k=0;k<typeList.length;k++){
+              if(result[i].TYPE==typeList[k].ID){
+                result[i].TYPE=typeList[k].NAME;
+                break;
+              }
+            }
+          }
+
+          let data = [['单位名称','单位地址','地区-省','地区-市','客户类别','客户编号','联系人','职位','部门','移动电话','办公电话','Email']];
+          for(let i=0;i<result.length;i++){
+            let arr=[];
+            for(let key in result[i]){
+              arr.push(result[i][key]);
+            }
+            data.push(arr);
+          }
+          callback(null,conn,data);
+        }
+      });
+    },function(conn,data,callback){
+      let buffer=xlsx.build([{
+        name:'sheet1',
+        data:data
+      }]);
+      //将文件内容插入新的文件中
+      fs.writeFileSync('excel/exportAddressList.xlsx',buffer,{'flag':'w'});
+      callback(null,conn);
+    },function(conn,callback){
+      //下载命令
+      let name='exportAddressList.xlsx';
+      let path='./excel/'+name;
+      res.download(path,name,function(err){
+        if(err){
+          if(!res.headersSent){
+            callback(err,conn);
+          }
+        }else{
+          callback(null,conn);
         }
       });
     }],function(err,conn){

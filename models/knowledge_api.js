@@ -621,7 +621,6 @@ var konwledgeApi={
             code:400,
             msg:'请选择需要上传的文件，文件自身参数名必填！'
           });
-          return;
         }else{
           let target;
           for(a in files){
@@ -652,6 +651,7 @@ var konwledgeApi={
                 code:400,
                 msg:'上传失败！'
               });
+              return;
             }
 
             let file_uploader=1;
